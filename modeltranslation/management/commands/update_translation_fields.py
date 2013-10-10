@@ -22,12 +22,10 @@ class Command(NoArgsCommand):
             opts = translator.get_options_for_model(model)
             for field_name in opts.fields.iterkeys():
                 def_lang_fieldname = build_localized_fieldname(field_name, DEFAULT_LANGUAGE)
-
-                # We'll only update fields which do not have an existing value
-                q = Q(**{def_lang_fieldname: None})
+                q = Q()
                 field = model._meta.get_field(field_name)
-                if field.empty_strings_allowed:
-                    q |= Q(**{def_lang_fieldname: ""})
-
-                model.objects.filter(q).rewrite(False).update(
-                    **{def_lang_fieldname: F(field_name)})
+                for x in model.objects.filter(q).rewrite(False):
+                  current_foreign_value = getattr(x, field_name)
+                  if current_foreign_value == None or  (field.empty_strings_allowed and current_foreign_value == ""):
+                    setattr(x, def_lang_fieldname, getattr(x, field_name))
+                    x.save()
